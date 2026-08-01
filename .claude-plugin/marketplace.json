@@ -11,10 +11,10 @@
       "name": "agent-skills",
       "source": {
         "source": "github",
-        "repo": "addyosmani/agent-skills"
+        "repo": "oldwinter/addyosmani-agent-skills"
       },
       "description": "Production-grade engineering skills covering every phase of software development: spec, plan, build, verify, review, and ship.",
-      "homepage": "https://github.com/addyosmani/agent-skills",
+      "homepage": "https://github.com/oldwinter/addyosmani-agent-skills",
       "license": "MIT",
       "keywords": ["skills", "agents", "engineering", "spec", "tdd", "review", "ship"]
     }
