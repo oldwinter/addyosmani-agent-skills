@@ -326,3 +326,10 @@ After building UI:
 - [ ] Loading, error, and empty states all handled
 - [ ] Follows the project's design system (spacing, colors, typography)
 - [ ] No accessibility warnings in dev tools or axe-core
+## 中文执行导读
+
+这是 `frontend-ui-engineering` 的中文 runtime 入口。
+
+中文工程请求命中本 skill 时，先按本导读确认范围，再完整执行下方上游工作流。输出说明使用简体中文；保留命令、参数、路径、URL、代码、schema、测试精确字符串和 skill slug。与其他 skill 协作、遇到不确定性或验证失败时，以本文件的上游约束为准。
+
+# Frontend UI Engineering

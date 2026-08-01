@@ -1,5 +1,15 @@
 # Agent Skills
 
+## 中文版安装（oldwinter fork）
+
+这是上游 `addyosmani/agent-skills` 的中文化 fork。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
+
+```bash
+npx skills add oldwinter/addyosmani-agent-skills --full-depth
+codex plugin marketplace add oldwinter/addyosmani-agent-skills
+codex plugin add agent-skills@addy-agent-skills
+```
+
 **Production-grade engineering skills for AI coding agents.**
 
 Skills encode the workflows, quality gates, and best practices that senior engineers use when building software. These ones are packaged so AI agents follow them consistently across every phase of development.
