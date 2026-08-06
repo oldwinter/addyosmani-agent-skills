@@ -74,6 +74,8 @@ npx skills add addyosmani/agent-skills --skill test-driven-development   # red-g
 > a `references/` directory inside the installed skill. This portability gap is
 > tracked in [#361](https://github.com/addyosmani/agent-skills/issues/361).
 
+> **中文说明：** 按单个 skill 执行 `npx` 安装只会复制 `skills/<name>/` 目录，不会复制仓库根目录的 `references/` 目录。该 skill 仍可正常使用，但指向补充共享清单的路径不可用。请改用整仓库集成、克隆仓库，或把所需清单复制到已安装 skill 内部的 `references/` 目录。此可移植性缺口由 [#361](https://github.com/addyosmani/agent-skills/issues/361) 跟踪。
+
 Prefer a native integration? Pick your tool below.
 
 <details>

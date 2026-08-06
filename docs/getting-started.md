@@ -148,6 +148,9 @@ needed checklist into a `references/` directory inside the installed skill.
 This portability gap is tracked in
 [addyosmani/agent-skills#361](https://github.com/addyosmani/agent-skills/issues/361).
 
+> **中文说明：** 使用 `npx skills add ... --skill <name>` 只安装单个 skill 时，仅复制所选 `skills/<name>/` 目录。该 skill 仍可正常使用，但指向仓库级 `references/` 目录中补充清单的路径将不可用。请改用整仓库集成、克隆仓库，或把所需清单复制到已安装 skill 内部的 `references/` 目录。此可移植性缺口由 [addyosmani/agent-skills#361](https://github.com/addyosmani/agent-skills/issues/361) 跟踪。
+
+
 ## Spec and task artifacts
 
 The `/spec` and `/plan` commands create working artifacts (`SPEC.md`, `tasks/plan.md`, `tasks/todo.md`). Treat them as **living documents** while the work is in progress:
