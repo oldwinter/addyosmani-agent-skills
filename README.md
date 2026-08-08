@@ -2,7 +2,7 @@
 
 ## 中文版安装（oldwinter fork）
 
-这是上游 `addyosmani/agent-skills` 的中文化 fork。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
+这是上游 `addyosmani/agent-skills` 的中文化 fork，当前同步到上游 `f49337711b7a932b4b338c1d4ad73384df8fd87d`。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
 
 ```bash
 npx skills add oldwinter/addyosmani-agent-skills --full-depth
@@ -189,9 +189,25 @@ Install as a native Codex plugin (Codex CLI v0.122+):
 
 ```bash
 codex plugin marketplace add addyosmani/agent-skills
+codex plugin add agent-skills@agent-skills
 ```
 
-Codex reads the root `skills/` directory directly through `.codex-plugin/plugin.json`. Once installed, invoke skills in chat using `@` (e.g., `@spec-driven-development`). See [docs/codex-setup.md](docs/codex-setup.md) for local installation and troubleshooting.
+The first command registers the marketplace; the second installs the plugin. Codex reads the root `skills/` directory directly through `.codex-plugin/plugin.json`. Once installed, invoke skills in chat using `@` (e.g., `@spec-driven-development`). See [docs/codex-setup.md](docs/codex-setup.md) for local installation and troubleshooting.
+
+</details>
+
+<details>
+<summary><b>Command Code</b></summary>
+
+Install natively with the built-in `cmd skills` command. Command Code clones the repo, discovers every `SKILL.md`, and installs into `.commandcode/skills/`:
+
+```bash
+cmd skills add addyosmani/agent-skills            # pick skills to install (project)
+cmd skills add addyosmani/agent-skills --global   # install for all projects (~/.commandcode/skills/)
+cmd skills add addyosmani/agent-skills -s spec-driven-development  # install a specific skill
+```
+
+Installed skills show up in the TUI slash menu, e.g. `/spec-driven-development`. See [docs/commandcode-setup.md](docs/commandcode-setup.md).
 
 </details>
 
