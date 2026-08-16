@@ -6,7 +6,7 @@
 
 - 上游项目：`addyosmani/agent-skills`
 - 中文 fork：`oldwinter/addyosmani-agent-skills`
-- 当前同步上游 commit：`f49337711b7a932b4b338c1d4ad73384df8fd87d`
+- 当前同步上游 commit：`df1edb2e05487d0aa6d93c747141e0aed1187f25`
 - 主要安装面：skills CLI、Claude Code plugin marketplace、Codex plugin
 - 中文 runtime 入口：`skills/*/SKILL.md` 的 24 个工程 skill
 

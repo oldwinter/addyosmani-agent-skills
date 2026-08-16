@@ -2,7 +2,7 @@
 
 ## 中文版安装（oldwinter fork）
 
-这是上游 `addyosmani/agent-skills` 的中文化 fork，当前同步到上游 `f49337711b7a932b4b338c1d4ad73384df8fd87d`。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
+这是上游 `addyosmani/agent-skills` 的中文化 fork，当前同步到上游 `df1edb2e05487d0aa6d93c747141e0aed1187f25`。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
 
 ```bash
 npx skills add oldwinter/addyosmani-agent-skills --full-depth
