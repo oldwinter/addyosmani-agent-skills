@@ -19,6 +19,7 @@ Task arrives
     ├── Don't know what you want yet? ──────→ interview-me
     ├── Have a rough concept, need variants? → idea-refine
     ├── New project/feature/change? ──→ spec-driven-development
+    ├── No quality bar written down? ──→ constraint-driven-development
     ├── Have a spec, need tasks? ──────→ planning-and-task-breakdown
     ├── Implementing code? ────────────→ incremental-implementation
     │   ├── UI work? ─────────────────→ frontend-ui-engineering
@@ -193,6 +194,6 @@ Not every task needs every skill. A bug fix might only need: `debugging-and-erro
 
 这是 `using-agent-skills` 的中文 runtime 入口。
 
-中文工程请求命中本 skill 时，先按本导读确认范围，再完整执行下方上游工作流。输出说明使用简体中文；保留命令、参数、路径、URL、代码、schema、测试精确字符串和 skill slug。与其他 skill 协作、遇到不确定性或验证失败时，以本文件的上游约束为准。
+中文工程请求命中本 skill 时，先按本导读确认范围，再完整执行下方上游工作流。若项目尚未写明质量标准，先路由到 `constraint-driven-development` 建立质量约束，再继续对应阶段的 skill。输出说明使用简体中文；保留命令、参数、路径、URL、代码、schema、测试精确字符串和 skill slug。与其他 skill 协作、遇到不确定性或验证失败时，以本文件的上游约束为准。
 
 # Using Agent Skills
