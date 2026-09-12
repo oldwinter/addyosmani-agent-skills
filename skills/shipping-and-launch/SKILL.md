@@ -308,6 +308,10 @@ After deploying:
 - [ ] Critical user flow works
 - [ ] Logs are flowing
 - [ ] Rollback tested or verified ready
+
+For every shipped service:
+
+- [ ] Error budget policy is in place: know what action to take when the budget drops below 20% and when it is exhausted
 ## 中文执行导读
 
 这是 `shipping-and-launch` 的中文 runtime 入口。

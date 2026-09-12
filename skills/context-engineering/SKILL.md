@@ -287,6 +287,8 @@ After setting up context, confirm:
 - [ ] Agent output follows the patterns shown in the rules file
 - [ ] Agent references actual project files and APIs (not hallucinated ones)
 - [ ] Context is refreshed when switching between major tasks
+- [ ] During long sessions, context is actively managed: failed attempts and replaced drafts are removed, while live errors and task definitions remain protected
+- [ ] Task-critical content (current error, active constraint) is positioned last in context, not buried under background material
 ## 中文执行导读
 
 这是 `context-engineering` 的中文 runtime 入口。
