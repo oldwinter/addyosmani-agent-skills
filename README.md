@@ -56,17 +56,19 @@ Skills also activate automatically based on what you're doing — designing an A
 **Fastest path — any agent, one command.** The open [skills CLI](https://github.com/vercel-labs/skills) installs into 70+ agents (Claude Code, Cursor, Codex, Copilot, Cline, and more):
 
 ```bash
-npx skills add addyosmani/agent-skills            # install all 25 skills
-npx skills add addyosmani/agent-skills --list     # browse before installing
+npx skills add oldwinter/addyosmani-agent-skills --full-depth            # install all 25 skills
+npx skills add oldwinter/addyosmani-agent-skills --full-depth --list     # browse before installing
 ```
 
 Or grab individual skills:
 
 ```bash
-npx skills add addyosmani/agent-skills --skill code-review-and-quality   # five-axis review before merge
-npx skills add addyosmani/agent-skills --skill interview-me              # requirements interrogation, one question at a time
-npx skills add addyosmani/agent-skills --skill test-driven-development   # red-green-refactor, enforced
+npx skills add oldwinter/addyosmani-agent-skills --full-depth --skill code-review-and-quality   # five-axis review before merge
+npx skills add oldwinter/addyosmani-agent-skills --full-depth --skill interview-me              # requirements interrogation, one question at a time
+npx skills add oldwinter/addyosmani-agent-skills --full-depth --skill test-driven-development   # red-green-refactor, enforced
 ```
+
+> 上游英文仓是 [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills)，只作出处，不要当本 fork 的最快安装路径。`skills/` 在子目录，漏掉 `--full-depth` 可能装不全中文导读。
 
 > **Installing one skill?** A per-skill `npx` install copies only
 > `skills/<name>/`, not the repo-level `references/` directory. The skill still
@@ -191,8 +193,8 @@ Using the standalone `copilot` CLI? Install it as a plugin — see [docs/copilot
 Install as a native Codex plugin (Codex CLI v0.122+):
 
 ```bash
-codex plugin marketplace add addyosmani/agent-skills
-codex plugin add agent-skills@agent-skills
+codex plugin marketplace add oldwinter/addyosmani-agent-skills
+codex plugin add agent-skills@addy-agent-skills
 ```
 
 The first command registers the marketplace; the second installs the plugin. Codex reads the root `skills/` directory directly through `.codex-plugin/plugin.json`. Once installed, invoke skills in chat using `@` (e.g., `@spec-driven-development`). See [docs/codex-setup.md](docs/codex-setup.md) for local installation and troubleshooting.
