@@ -174,6 +174,46 @@ test('fails when an eval case is below the required minimums', () => {
   assert.match(result.stdout, /below required minimums/);
 });
 
+test('reports malformed collection shapes without crashing', () => {
+  const cases = [
+    { mutate: (d) => { d.trigger.positive = {}; }, message: /trigger\.positive must be an array/ },
+    { mutate: (d) => { d.trigger.negative = null; }, message: /trigger\.negative must be an array/ },
+    { mutate: (d) => { d.evals = {}; }, message: /evals must be an array/ },
+  ];
+
+  for (const { mutate, message } of cases) {
+    const root = makeSandbox();
+    writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
+    const data = completeCase('alpha-skill', 'change alpha widget');
+    mutate(data);
+    writeJson(path.join(root, 'evals', 'cases', 'alpha-skill.json'), data);
+
+    const result = run(root);
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, message);
+    assert.doesNotMatch(result.stderr, /TypeError|not iterable/);
+  }
+});
+
+test('reports non-object collection entries without crashing', () => {
+  const root = makeSandbox();
+  writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
+  writeJson(path.join(root, 'evals', 'cases', 'alpha-skill.json'), {
+    skill_name: 'alpha-skill',
+    trigger: { positive: [null, null, null], negative: [null, null] },
+    evals: [null],
+  });
+
+  const result = run(root);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /positive entry 1 must be an object/);
+  assert.match(result.stdout, /negative entry 1 must be an object/);
+  assert.match(result.stdout, /eval entry 1 must be an object/);
+  assert.doesNotMatch(result.stderr, /TypeError/);
+});
+
 test('fails when a behavioral eval references a missing fixture', () => {
   const root = makeSandbox();
   writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
