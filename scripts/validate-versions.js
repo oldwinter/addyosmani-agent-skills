@@ -12,22 +12,32 @@ const manifestPaths = [
   ".agents/plugins/marketplace.json",
 ];
 
-function readManifestVersion(manifestPath) {
+function readManifestVersions(manifestPath) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  return manifest.version ?? manifest.plugins?.[0]?.version;
+  if (Array.isArray(manifest.plugins)) {
+    if (manifest.plugins.length === 0) {
+      return [{ label: `${manifestPath} plugins`, version: undefined }];
+    }
+    return manifest.plugins.map((plugin, index) => ({
+      label: `${manifestPath} plugin ${plugin?.name ?? `#${index + 1}`}`,
+      version: plugin?.version,
+    }));
+  }
+  return [{ label: manifestPath, version: manifest.version }];
 }
 
-const expectedVersion = readManifestVersion("plugin.json");
+const expectedVersion = readManifestVersions("plugin.json")[0].version;
 if (!expectedVersion) {
   throw new Error("plugin.json is missing a version field");
 }
 
 for (const manifestPath of manifestPaths) {
-  const version = readManifestVersion(manifestPath);
-  if (version !== expectedVersion) {
-    throw new Error(
-      `${manifestPath} has version ${version ?? "<missing>"}; expected ${expectedVersion}`,
-    );
+  for (const { label, version } of readManifestVersions(manifestPath)) {
+    if (version !== expectedVersion) {
+      throw new Error(
+        `${label} has version ${version ?? "<missing>"}; expected ${expectedVersion}`,
+      );
+    }
   }
 }
 

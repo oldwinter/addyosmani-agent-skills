@@ -70,6 +70,7 @@ run_hook() {
   RC=0
   ERR=$(printf '%s' "$input" | \
     CLAUDE_PROJECT_DIR="$proj" PATH="$STUB_BIN:$PATH" \
+    SDD_CACHE_DEBUG="${SDD_CACHE_DEBUG:-0}" \
     CURL_STUB_STATUS="${CURL_STUB_STATUS:-000}" \
     CURL_STUB_HEADERS="${CURL_STUB_HEADERS:-}" \
     bash "hooks/$script" 2>&1 >/dev/null) || RC=$?
@@ -239,6 +240,18 @@ CURL_STUB_STATUS=304 run_hook sdd-cache-pre.sh "$P" "$(pre_input "$URL")"
 assert_eq "pre serves the entry post wrote (exit 2)" "2" "$RC"
 served=$(printf '%s\n' "$ERR" | sed -n '/BEGIN CACHED CONTENT/,/END CACHED CONTENT/p' | sed '1d;$d')
 assert_eq "round-trip content byte-exact" "$BODY" "$served"
+
+# ── Test 16: debug metadata never logs fetched response content ──────────
+printf '\nTest 16: debug log excludes response content\n'
+P="$TMPDIR/t16"; mkdir -p "$P"
+SECRET='SECRET_RESPONSE_CONTENT_MUST_NOT_BE_LOGGED'
+SDD_CACHE_DEBUG=1 CURL_STUB_HEADERS='HTTP/2 200
+etag: "debug-etag"' \
+  run_hook sdd-cache-post.sh "$P" "$(post_input "$URL" "$SECRET")"
+DEBUG_LOG="$P/.claude/sdd-cache/.debug.log"
+assert_eq "debug log exists" "1" "$([ -f "$DEBUG_LOG" ] && echo 1 || echo 0)"
+assert_eq "response content absent from debug log" "0" "$(grep -cF "$SECRET" "$DEBUG_LOG" || true)"
+assert_eq "response byte count remains logged" "1" "$(grep -cF 'extracted content bytes=' "$DEBUG_LOG" || true)"
 
 # ── Summary ──────────────────────────────────────────────────────────────
 printf '\n══════════════════════════════════════════\n'

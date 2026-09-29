@@ -32,6 +32,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { parseArgs } = require('util');
 
 const ROOT = path.join(__dirname, '..');
 const SKILLS_DIR = path.join(ROOT, 'skills');
@@ -193,6 +194,17 @@ function resolveFixturePath(root, rel) {
   return resolvedPath;
 }
 
+function rejectFixtureSymlinks(source, displayPath) {
+  const stat = fs.lstatSync(source);
+  if (stat.isSymbolicLink()) {
+    throw new Error(`fixture path contains a symbolic link: ${displayPath}`);
+  }
+  if (!stat.isDirectory()) return;
+  for (const name of fs.readdirSync(source)) {
+    rejectFixtureSymlinks(path.join(source, name), path.join(displayPath, name));
+  }
+}
+
 // ---------- tier 2 ----------
 
 function runDeterministic(minRank1) {
@@ -225,6 +237,11 @@ function runDeterministic(minRank1) {
     }
     const d = c.data;
     const expected = c.file.replace(/\.json$/, '');
+    if (d === null || typeof d !== 'object' || Array.isArray(d)) {
+      console.log(`  ✗  ${c.file}: case file root must be an object`);
+      errors++;
+      continue;
+    }
     if (d.skill_name !== expected) {
       console.log(`  ✗  ${c.file}: skill_name "${d.skill_name}" does not match filename`);
       errors++;
@@ -235,8 +252,36 @@ function runDeterministic(minRank1) {
       continue;
     }
 
+    let trigger = {};
+    if (d.trigger !== undefined) {
+      if (d.trigger === null || typeof d.trigger !== 'object' || Array.isArray(d.trigger)) {
+        console.log(`  ✗  ${c.file}: trigger must be an object`);
+        errors++;
+      } else {
+        trigger = d.trigger;
+      }
+    }
+    const collection = (value, label) => {
+      if (value === undefined) return [];
+      if (!Array.isArray(value)) {
+        console.log(`  ✗  ${c.file}: ${label} must be an array`);
+        errors++;
+        return [];
+      }
+      return value;
+    };
+    const evals = collection(d.evals, 'evals');
+    const positive = collection(trigger.positive, 'trigger.positive');
+    const negative = collection(trigger.negative, 'trigger.negative');
+
     // Schema: behavioral evals (skill-creator evals.json shape)
-    for (const ev of d.evals || []) {
+    for (let index = 0; index < evals.length; index++) {
+      const ev = evals[index];
+      if (ev === null || typeof ev !== 'object' || Array.isArray(ev)) {
+        console.log(`  ✗  ${c.file}: eval entry ${index + 1} must be an object`);
+        errors++;
+        continue;
+      }
       const kind = ev.kind || 'execution';
       const fixtureRequired = kind !== 'dialogue';
       const hasFiles =
@@ -280,6 +325,13 @@ function runDeterministic(minRank1) {
           if (!fs.existsSync(fixture)) {
             console.log(`  ✗  ${c.file}: eval id=${ev.id} fixture not found: evals/fixtures/${rel}`);
             errors++;
+          } else {
+            try {
+              rejectFixtureSymlinks(fixture, rel);
+            } catch (e) {
+              console.log(`  ✗  ${c.file}: eval id=${ev.id} has unsafe fixture "${rel}" — ${e.message}`);
+              errors++;
+            }
           }
         }
       }
@@ -290,9 +342,25 @@ function runDeterministic(minRank1) {
     }
 
     // Trigger: positive
-    for (const t of d.trigger?.positive || []) {
+    for (let index = 0; index < positive.length; index++) {
+      const t = positive[index];
+      if (t === null || typeof t !== 'object' || Array.isArray(t)) {
+        console.log(`  ✗  ${c.file}: positive entry ${index + 1} must be an object`);
+        errors++;
+        continue;
+      }
+      if (typeof t.prompt !== 'string' || !t.prompt.trim()) {
+        console.log(`  ✗  ${c.file}: positive entry ${index + 1} needs a non-empty prompt`);
+        errors++;
+        continue;
+      }
+      if (t.top_k !== undefined && (!Number.isInteger(t.top_k) || t.top_k < 1)) {
+        console.log(`  ✗  ${c.file}: positive entry ${index + 1} top_k must be a positive integer`);
+        errors++;
+        continue;
+      }
       positives++;
-      const topK = t.top_k || 3;
+      const topK = t.top_k ?? 3;
       const ranking = rankSkills(t.prompt, corpus);
       const idx = ranking.findIndex((r) => r.name === expected);
       const hit = ranking[idx];
@@ -316,7 +384,23 @@ function runDeterministic(minRank1) {
     // With an "owner", the negative becomes a pairwise routing test: the
     // declared owner skill must outrank this one for the prompt, which
     // prevents vacuous passes where the prompt matches nothing at all.
-    for (const t of d.trigger?.negative || []) {
+    for (let index = 0; index < negative.length; index++) {
+      const t = negative[index];
+      if (t === null || typeof t !== 'object' || Array.isArray(t)) {
+        console.log(`  ✗  ${c.file}: negative entry ${index + 1} must be an object`);
+        errors++;
+        continue;
+      }
+      if (typeof t.prompt !== 'string' || !t.prompt.trim()) {
+        console.log(`  ✗  ${c.file}: negative entry ${index + 1} needs a non-empty prompt`);
+        errors++;
+        continue;
+      }
+      if (t.owner !== undefined && (typeof t.owner !== 'string' || !t.owner.trim())) {
+        console.log(`  ✗  ${c.file}: negative entry ${index + 1} owner must be a non-empty skill name`);
+        errors++;
+        continue;
+      }
       const ranking = rankSkills(t.prompt, corpus);
       let ok = true;
       if (ranking[0].name === expected && ranking[0].score > 0) {
@@ -345,9 +429,9 @@ function runDeterministic(minRank1) {
     }
 
     // Required minimums
-    const pc = (d.trigger?.positive || []).length;
-    const nc = (d.trigger?.negative || []).length;
-    const ec = (d.evals || []).length;
+    const pc = positive.length;
+    const nc = negative.length;
+    const ec = evals.length;
     if (pc < MIN_POSITIVE || nc < MIN_NEGATIVE || ec < MIN_EVALS) {
       console.log(`  ✗  ${expected}: below required minimums (${pc} positive/${nc} negative/${ec} behavioral; need ${MIN_POSITIVE}/${MIN_NEGATIVE}/${MIN_EVALS})`);
       errors++;
@@ -395,6 +479,7 @@ function materializeWorkspace(ev) {
     if (!fs.existsSync(src)) {
       throw new Error(`fixture listed in files[] not found: evals/fixtures/${rel}`);
     }
+    rejectFixtureSymlinks(src, rel);
     const dest = resolveFixturePath(workspace, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.cpSync(src, dest, { recursive: true });
@@ -611,23 +696,44 @@ function runBehavioral(skillName, dryRun) {
 // ---------- main ----------
 
 function main(args = process.argv.slice(2)) {
-  const bIdx = args.indexOf('--behavioral');
-  const rankIdx = args.indexOf('--min-rank1');
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args,
+      strict: true,
+      allowPositionals: false,
+      options: {
+        behavioral: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'min-rank1': { type: 'string' },
+      },
+    }));
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+
+  const behavioral = values.behavioral;
+  const dryRun = values['dry-run'] === true;
+  const rawRank1 = values['min-rank1'];
   let minRank1 = null;
-  if (rankIdx !== -1) {
-    const raw = args[rankIdx + 1];
-    minRank1 = Number(raw);
-    if (raw === undefined || raw === '' || !Number.isFinite(minRank1) || minRank1 < 0 || minRank1 > 100) {
+  if (rawRank1 !== undefined) {
+    minRank1 = Number(rawRank1);
+    if (rawRank1 === '' || !Number.isFinite(minRank1) || minRank1 < 0 || minRank1 > 100) {
       console.error('--min-rank1 must be a number from 0 to 100');
       process.exit(1);
     }
   }
-  if (bIdx !== -1) {
+  if (dryRun && !behavioral) {
+    console.error('--dry-run requires --behavioral <skill>');
+    process.exit(1);
+  }
+  if (behavioral) {
     if (minRank1 !== null) {
       console.error('--min-rank1 applies only to deterministic evals');
       process.exit(1);
     }
-    runBehavioral(args[bIdx + 1], args.includes('--dry-run'));
+    runBehavioral(behavioral, dryRun);
   } else {
     runDeterministic(minRank1);
   }

@@ -202,6 +202,45 @@ test('fails when a link points at a checklist that no longer exists', () => {
   assert.match(result.stdout, /1 skills checked — 1 error\(s\) — FAILED/);
 });
 
+test('rejects a skill reference file symlink that escapes the repository', () => {
+  const root = makeSandbox();
+  const outside = path.join(os.tmpdir(), `agent-skills-outside-${process.pid}-${Date.now()}.md`);
+  fs.writeFileSync(outside, 'outside content with references/missing.md\n');
+  writeFile(root, 'skills/example/SKILL.md', 'See [external](references/external.md).\n');
+  const link = path.join(root, 'skills/example/references/external.md');
+  fs.mkdirSync(path.dirname(link), { recursive: true });
+  fs.symlinkSync(outside, link);
+
+  try {
+    const result = run(root);
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /external\.md.*resolves outside repository/s);
+    assert.doesNotMatch(result.stdout, /missing\.md/);
+  } finally {
+    fs.rmSync(outside, { force: true });
+  }
+});
+
+test('rejects a linked shared reference symlink that escapes the repository', () => {
+  const root = makeSandbox();
+  const outside = path.join(os.tmpdir(), `agent-skills-shared-outside-${process.pid}-${Date.now()}.md`);
+  fs.writeFileSync(outside, '# outside\n');
+  const link = path.join(root, 'references/security-checklist.md');
+  fs.mkdirSync(path.dirname(link), { recursive: true });
+  fs.symlinkSync(outside, link);
+  writeFile(root, 'skills/example/SKILL.md', 'See [security](../../references/security-checklist.md).\n');
+
+  try {
+    const result = run(root);
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /security-checklist\.md.*resolves outside repository/s);
+  } finally {
+    fs.rmSync(outside, { force: true });
+  }
+});
+
 test('ignores paths that are not references/ links', () => {
   // Skills legitimately name artifacts the user has yet to create. Widening
   // this validator into a general markdown linter would fail the build on them.

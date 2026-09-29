@@ -11,7 +11,16 @@
 #   {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "..."}}
 # Hosts that validate hook output (Codex CLI, Claude Code) reject other shapes.
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  SOURCE_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  LINK_TARGET="$(readlink "$SOURCE")"
+  case "$LINK_TARGET" in
+    /*) SOURCE="$LINK_TARGET" ;;
+    *) SOURCE="$SOURCE_DIR/$LINK_TARGET" ;;
+  esac
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 SKILLS_DIR="$(dirname "$SCRIPT_DIR")/skills"
 META_SKILL="$SKILLS_DIR/using-agent-skills/SKILL.md"
 

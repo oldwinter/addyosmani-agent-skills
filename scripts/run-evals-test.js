@@ -174,6 +174,46 @@ test('fails when an eval case is below the required minimums', () => {
   assert.match(result.stdout, /below required minimums/);
 });
 
+test('reports malformed collection shapes without crashing', () => {
+  const cases = [
+    { mutate: (d) => { d.trigger.positive = {}; }, message: /trigger\.positive must be an array/ },
+    { mutate: (d) => { d.trigger.negative = null; }, message: /trigger\.negative must be an array/ },
+    { mutate: (d) => { d.evals = {}; }, message: /evals must be an array/ },
+  ];
+
+  for (const { mutate, message } of cases) {
+    const root = makeSandbox();
+    writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
+    const data = completeCase('alpha-skill', 'change alpha widget');
+    mutate(data);
+    writeJson(path.join(root, 'evals', 'cases', 'alpha-skill.json'), data);
+
+    const result = run(root);
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, message);
+    assert.doesNotMatch(result.stderr, /TypeError|not iterable/);
+  }
+});
+
+test('reports non-object collection entries without crashing', () => {
+  const root = makeSandbox();
+  writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
+  writeJson(path.join(root, 'evals', 'cases', 'alpha-skill.json'), {
+    skill_name: 'alpha-skill',
+    trigger: { positive: [null, null, null], negative: [null, null] },
+    evals: [null],
+  });
+
+  const result = run(root);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /positive entry 1 must be an object/);
+  assert.match(result.stdout, /negative entry 1 must be an object/);
+  assert.match(result.stdout, /eval entry 1 must be an object/);
+  assert.doesNotMatch(result.stderr, /TypeError/);
+});
+
 test('fails when a behavioral eval references a missing fixture', () => {
   const root = makeSandbox();
   writeSkill(root, 'alpha-skill', 'Handles alpha widgets. Use when changing alpha widgets.');
@@ -263,6 +303,30 @@ test('dry-runs a fixtureless dialogue eval', () => {
 
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /dialogue transcript/);
+});
+
+test('rejects unknown command-line options', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--definitely-unknown']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Unknown option.*definitely-unknown/i);
+});
+
+test('rejects dry-run outside behavioral mode', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--dry-run']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /--dry-run requires --behavioral/);
+});
+
+test('rejects behavioral mode without a skill value', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--behavioral']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /--behavioral.*value/i);
 });
 
 test('enforces the configured rank-1 floor', () => {
@@ -619,5 +683,25 @@ test('materializes a git baseline and applies a working-tree patch', () => {
     assert.equal(fs.existsSync(path.join(workspace, '.eval')), false);
   } finally {
     fs.rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test('rejects fixture symlinks that escape the fixture root', () => {
+  for (const rel of ['project/leak.txt', 'project/nested/leak.txt']) {
+    const root = makeSandbox();
+    const outside = path.join(root, 'outside-secret.txt');
+    fs.writeFileSync(outside, 'outside secret\n');
+    const link = path.join(root, 'evals', 'fixtures', rel);
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(outside, link);
+    const snippet = [
+      "const m=require('./scripts/run-evals.js');",
+      `m.materializeWorkspace({files:[${JSON.stringify(rel)}]});`,
+    ].join('');
+
+    const result = spawnSync(process.execPath, ['-e', snippet], { cwd: root, encoding: 'utf8' });
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /symbolic link/i);
   }
 });

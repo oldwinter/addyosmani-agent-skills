@@ -466,8 +466,31 @@ else
   assert_eq "Stop restores original + edit byte-identically" "identical" "differs"
 fi
 
+# ── Test 17: project hook ignores a direct outside path ─────────────────
+printf '\nTest 17: Direct outside-project path is ignored\n'
+PROJ="$TMPDIR/rt17-project"; mkdir -p "$PROJ"
+OUTSIDE="$TMPDIR/rt17-outside.js"
+printf '%s\n' '/* simplify-ignore-start */ outside(); /* simplify-ignore-end */' > "$OUTSIDE"
+cp "$OUTSIDE" "$OUTSIDE.orig"
+rt_hook_event "$PROJ" "Read" "$OUTSIDE"
+assert_eq "outside file is not placeholdered" "0" "$(grep -c 'BLOCK_' "$OUTSIDE" || true)"
+assert_eq "outside file stays byte-identical" "identical" "$([ "$(cmp -s "$OUTSIDE" "$OUTSIDE.orig"; echo $?)" = 0 ] && echo identical || echo differs)"
+rt_hook_event "$PROJ" "" ""
+
+# ── Test 18: in-project symlink to an outside file is ignored ───────────
+printf '\nTest 18: Symlink escape is ignored\n'
+PROJ="$TMPDIR/rt18-project"; mkdir -p "$PROJ"
+OUTSIDE="$TMPDIR/rt18-outside.js"
+printf '%s\n' '/* simplify-ignore-start */ outside(); /* simplify-ignore-end */' > "$OUTSIDE"
+cp "$OUTSIDE" "$OUTSIDE.orig"
+LINK="$PROJ/link.js"; ln -s "$OUTSIDE" "$LINK"
+rt_hook_event "$PROJ" "Read" "$LINK"
+assert_eq "symlink target is not placeholdered" "0" "$(grep -c 'BLOCK_' "$OUTSIDE" || true)"
+assert_eq "symlink target stays byte-identical" "identical" "$([ "$(cmp -s "$OUTSIDE" "$OUTSIDE.orig"; echo $?)" = 0 ] && echo identical || echo differs)"
+rt_hook_event "$PROJ" "" ""
+
 else
-  printf '\nTests 14-16 skipped: jq not available (hook no-ops without it)\n'
+  printf '\nTests 14-18 skipped: jq not available (hook no-ops without it)\n'
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────
