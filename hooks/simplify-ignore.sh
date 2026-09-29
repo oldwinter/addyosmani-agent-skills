@@ -28,7 +28,8 @@ if ! command -v jq >/dev/null 2>&1; then
   printf '%s\n' "error: missing jq" >&2; exit 1
 fi
 
-CACHE="${CLAUDE_PROJECT_DIR:-.}/.claude/.simplify-ignore-cache"
+PROJECT_ROOT=$(cd -P "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null && pwd) || exit 0
+CACHE="$PROJECT_ROOT/.claude/.simplify-ignore-cache"
 if [ -t 0 ]; then INPUT="{}"; else INPUT=$(cat); fi
 
 # Parse hook input — trap errors explicitly so set -e doesn't cause
@@ -53,6 +54,31 @@ hash_cmd() {
 }
 file_id() { printf '%s' "$1" | hash_cmd | cut -c1-16; }
 block_hash() { printf '%s' "$1" | hash_cmd | cut -c1-8; }
+
+# Resolve existing files without relying on GNU realpath (absent on stock macOS).
+# Resolving the final symlink as well as parent directories prevents an
+# in-project link from granting this project hook write access outside the root.
+resolve_path() {
+  local target="$1" dir link
+  while [ -L "$target" ]; do
+    dir=$(cd -P "$(dirname "$target")" 2>/dev/null && pwd) || return 1
+    link=$(readlink "$target") || return 1
+    case "$link" in
+      /*) target="$link" ;;
+      *) target="$dir/$link" ;;
+    esac
+  done
+  dir=$(cd -P "$(dirname "$target")" 2>/dev/null && pwd) || return 1
+  printf '%s/%s' "$dir" "$(basename "$target")"
+}
+
+path_in_project() {
+  RESOLVED_PATH=$(resolve_path "$1") || return 1
+  case "$RESOLVED_PATH" in
+    "$PROJECT_ROOT"|"$PROJECT_ROOT"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 # Escape glob metacharacters so ${var/pattern/repl} treats pattern as literal.
 # Needed for Bash 3.2 (macOS) where quotes don't suppress globbing in PE patterns.
 escape_glob() {
@@ -241,6 +267,11 @@ if [ -z "$TOOL_NAME" ]; then
     pathfile="$CACHE/${fid}.path"
     [ -f "$pathfile" ] || { rm -f "$bak"; continue; }
     orig=$(cat "$pathfile")
+    if ! path_in_project "$orig"; then
+      printf 'Warning: refusing to restore out-of-project path %s\n' "$orig" >&2
+      continue
+    fi
+    orig="$RESOLVED_PATH"
     if [ -f "$orig" ]; then
       # A change can reach the file through a route that fires no Edit or Write
       # event (a Bash command, a formatter, an external editor), and the backup
@@ -281,6 +312,8 @@ if [ -z "$TOOL_NAME" ]; then
 fi
 
 [ -z "$FILE_PATH" ] && exit 0
+if ! path_in_project "$FILE_PATH"; then exit 0; fi
+FILE_PATH="$RESOLVED_PATH"
 
 # ── PreToolUse Read: filter in-place ──────────────────────────────────────────
 if [ "$TOOL_NAME" = "Read" ]; then
