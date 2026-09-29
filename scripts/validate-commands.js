@@ -75,6 +75,86 @@ function descriptionFromToml(filePath) {
   return singleMatch ? singleMatch[1] : null;
 }
 
+function commandTomlErrors(filePath) {
+  const lines = fs.readFileSync(filePath, 'utf8').split(/\r?\n/);
+  const errors = [];
+  const seen = new Set();
+  let multiline = null;
+
+  lines.forEach((line, index) => {
+    const lineNo = index + 1;
+    if (multiline) {
+      const close = line.indexOf(multiline.delimiter);
+      if (close === -1) return;
+      const trailing = line.slice(close + multiline.delimiter.length).trim();
+      if (trailing && !trailing.startsWith('#')) {
+        errors.push(`line ${lineNo}: unexpected text after ${multiline.key} multiline string`);
+      }
+      multiline = null;
+      return;
+    }
+
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(.*)$/);
+    if (!assignment) {
+      errors.push(`line ${lineNo}: expected key = quoted string`);
+      return;
+    }
+    const [, key, raw] = assignment;
+    if (seen.has(key)) errors.push(`line ${lineNo}: duplicate key "${key}"`);
+    seen.add(key);
+
+    const delimiter = raw.startsWith('\"\"\"') ? '\"\"\"' : raw.startsWith("'''") ? "'''" : null;
+    if (delimiter) {
+      const rest = raw.slice(3);
+      const close = rest.indexOf(delimiter);
+      if (close === -1) {
+        multiline = { key, delimiter, lineNo };
+      } else {
+        const trailing = rest.slice(close + delimiter.length).trim();
+        if (trailing && !trailing.startsWith('#')) {
+          errors.push(`line ${lineNo}: unexpected text after ${key} multiline string`);
+        }
+      }
+      return;
+    }
+
+    const quote = raw[0];
+    if (quote !== '\"' && quote !== "'") {
+      errors.push(`line ${lineNo}: ${key} must be a quoted string`);
+      return;
+    }
+    let escaped = false;
+    let close = -1;
+    for (let i = 1; i < raw.length; i++) {
+      const char = raw[i];
+      if (quote === '\"' && char === '\\' && !escaped) {
+        escaped = true;
+        continue;
+      }
+      if (char === quote && !escaped) {
+        close = i;
+        break;
+      }
+      escaped = false;
+    }
+    if (close === -1) {
+      errors.push(`line ${lineNo}: unterminated string for ${key}`);
+      return;
+    }
+    const trailing = raw.slice(close + 1).trim();
+    if (trailing && !trailing.startsWith('#')) {
+      errors.push(`line ${lineNo}: unexpected text after ${key} string`);
+    }
+  });
+
+  if (multiline) {
+    errors.push(`line ${multiline.lineNo}: unterminated multiline string for ${multiline.key}`);
+  }
+  return errors;
+}
+
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
 function loadCommands({ dir, ext }) {
@@ -146,8 +226,7 @@ function main() {
   }
 
   // ── Claude frontmatter validity ─────────────────────────────────────────────
-  // Only the .md directory: the TOML dirs are parsed by a real TOML parser
-  // already, so a malformed one surfaces as a missing description above.
+  // Only the .md directory: TOML syntax is checked separately below.
   console.log('\nChecking Claude command frontmatter...');
 
   for (const stem of claudeStems) {
@@ -168,6 +247,29 @@ function main() {
     for (const message of yamlErrors) {
       console.log(`       ${message}`);
       errors++;
+    }
+  }
+
+  // ── TOML syntax validity ─────────────────────────────────────────────────
+  // Command TOML deliberately uses a tiny top-level string-only subset:
+  // description plus a single- or multiline prompt. Validate that complete
+  // structure rather than extracting one line and assuming the rest parses.
+  console.log('\nChecking TOML command syntax...');
+
+  for (const tool of ['gemini', 'antigravity']) {
+    const config = DIRS[tool];
+    for (const stem of Object.keys(byTool[tool]).sort()) {
+      const full = path.join(config.dir, `${stem}${config.ext}`);
+      const syntaxErrors = commandTomlErrors(full);
+      if (syntaxErrors.length === 0) {
+        console.log(`  ✓  ${tool}/${stem}`);
+        continue;
+      }
+      console.log(`  ✗  ${tool}/${stem}`);
+      for (const message of syntaxErrors) {
+        console.log(`       ${message}`);
+        errors++;
+      }
     }
   }
 

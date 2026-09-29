@@ -154,6 +154,32 @@ test('parses escaped quotes in double-quoted TOML descriptions', () => {
   assert.match(result.stdout, /1 commands checked — 0 error\(s\) — PASSED/);
 });
 
+test('rejects an unterminated TOML array after a valid description', () => {
+  const root = makeSandbox();
+  writeClaudeCommand(root, 'review', 'description: Review a change');
+  const invalid = 'description = "Review a change"\nprompt = [\n';
+  writeFile(root, path.join('.gemini', 'commands', 'review.toml'), invalid);
+  writeFile(root, path.join('commands', 'review.toml'), invalid);
+
+  const result = run(root);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /prompt.*quoted string/i);
+});
+
+test('rejects an unterminated TOML multiline string', () => {
+  const root = makeSandbox();
+  writeClaudeCommand(root, 'review', 'description: Review a change');
+  const invalid = 'description = "Review a change"\nprompt = """never closes\n';
+  writeFile(root, path.join('.gemini', 'commands', 'review.toml'), invalid);
+  writeFile(root, path.join('commands', 'review.toml'), invalid);
+
+  const result = run(root);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stdout, /unterminated multiline string/i);
+});
+
 // Claude parses a command's frontmatter as YAML when the command is loaded, and
 // `descriptionFromMd` splits each line on its first colon — so a command whose
 // frontmatter is not valid YAML passed every check here. Same class as the
