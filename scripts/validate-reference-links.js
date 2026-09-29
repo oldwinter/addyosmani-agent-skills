@@ -49,6 +49,17 @@ const { stripFencedCodeBlocks } = require('./lib/skill-lint');
 const ROOT = path.resolve(__dirname, '..');
 const SKILLS_DIR = path.join(ROOT, 'skills');
 
+function escapesRepository(file) {
+  let real;
+  try {
+    real = fs.realpathSync(file);
+  } catch {
+    return false;
+  }
+  const relative = path.relative(ROOT, real);
+  return relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+}
+
 // Matches a link to a references/ markdown file, with any number of leading
 // `../` segments: `references/x.md`, `../../references/x.md`. Anchored on a
 // non-path character so `myreferences/x.md` does not match.
@@ -66,7 +77,9 @@ function findViolations(file) {
       const link = match[1];
       const target = path.resolve(baseDir, link);
       if (!fs.existsSync(target)) {
-        violations.push({ line: i + 1, link, target });
+        violations.push({ line: i + 1, link, target, reason: 'does not exist' });
+      } else if (escapesRepository(target)) {
+        violations.push({ line: i + 1, link, target, reason: 'resolves outside repository' });
       }
     }
   });
@@ -82,7 +95,10 @@ function skillReferenceFiles(skillDir) {
     .filter((name) => name.endsWith('.md'))
     .sort()
     .map((name) => path.join(dir, name))
-    .filter((file) => fs.statSync(file).isFile());
+    .filter((file) => {
+      const stat = fs.lstatSync(file);
+      return stat.isFile() || stat.isSymbolicLink();
+    });
 }
 
 function toPosix(file) {
@@ -109,6 +125,13 @@ function main() {
 
     checked++;
     for (const file of [skillFile, ...skillReferenceFiles(skillDir)]) {
+      if (escapesRepository(file)) {
+        console.log(`  ✗  ${toPosix(file)}`);
+        console.log('       reference file resolves outside repository');
+        errors++;
+        if (file !== skillFile) referenceFileErrors++;
+        continue;
+      }
       const violations = findViolations(file);
 
       if (violations.length === 0) {
@@ -117,8 +140,8 @@ function main() {
       }
 
       console.log(`  ✗  ${toPosix(file)}`);
-      for (const { line, link, target } of violations) {
-        console.log(`       L${line}: ${link} — resolves to ${toPosix(target)}, which does not exist`);
+      for (const { line, link, target, reason } of violations) {
+        console.log(`       L${line}: ${link} — resolves to ${toPosix(target)}, which ${reason}`);
         errors++;
         if (file !== skillFile) referenceFileErrors++;
       }
