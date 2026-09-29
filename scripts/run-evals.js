@@ -32,6 +32,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { parseArgs } = require('util');
 
 const ROOT = path.join(__dirname, '..');
 const SKILLS_DIR = path.join(ROOT, 'skills');
@@ -676,23 +677,44 @@ function runBehavioral(skillName, dryRun) {
 // ---------- main ----------
 
 function main(args = process.argv.slice(2)) {
-  const bIdx = args.indexOf('--behavioral');
-  const rankIdx = args.indexOf('--min-rank1');
+  let values;
+  try {
+    ({ values } = parseArgs({
+      args,
+      strict: true,
+      allowPositionals: false,
+      options: {
+        behavioral: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'min-rank1': { type: 'string' },
+      },
+    }));
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+
+  const behavioral = values.behavioral;
+  const dryRun = values['dry-run'] === true;
+  const rawRank1 = values['min-rank1'];
   let minRank1 = null;
-  if (rankIdx !== -1) {
-    const raw = args[rankIdx + 1];
-    minRank1 = Number(raw);
-    if (raw === undefined || raw === '' || !Number.isFinite(minRank1) || minRank1 < 0 || minRank1 > 100) {
+  if (rawRank1 !== undefined) {
+    minRank1 = Number(rawRank1);
+    if (rawRank1 === '' || !Number.isFinite(minRank1) || minRank1 < 0 || minRank1 > 100) {
       console.error('--min-rank1 must be a number from 0 to 100');
       process.exit(1);
     }
   }
-  if (bIdx !== -1) {
+  if (dryRun && !behavioral) {
+    console.error('--dry-run requires --behavioral <skill>');
+    process.exit(1);
+  }
+  if (behavioral) {
     if (minRank1 !== null) {
       console.error('--min-rank1 applies only to deterministic evals');
       process.exit(1);
     }
-    runBehavioral(args[bIdx + 1], args.includes('--dry-run'));
+    runBehavioral(behavioral, dryRun);
   } else {
     runDeterministic(minRank1);
   }

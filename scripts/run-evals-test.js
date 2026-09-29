@@ -305,6 +305,30 @@ test('dry-runs a fixtureless dialogue eval', () => {
   assert.match(result.stdout, /dialogue transcript/);
 });
 
+test('rejects unknown command-line options', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--definitely-unknown']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /Unknown option.*definitely-unknown/i);
+});
+
+test('rejects dry-run outside behavioral mode', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--dry-run']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /--dry-run requires --behavioral/);
+});
+
+test('rejects behavioral mode without a skill value', () => {
+  const root = makeSandbox();
+  const result = run(root, ['--behavioral']);
+
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.match(result.stderr, /--behavioral.*value/i);
+});
+
 test('enforces the configured rank-1 floor', () => {
   const root = makeSandbox();
   writeSkill(root, 'alpha-skill', 'Handles widget work. Use when implementing widget changes.');
