@@ -27,7 +27,7 @@ dbg() {
   mkdir -p "$dir"
   printf '%s [post] %s\n' "$(date -u +%FT%TZ)" "$*" >> "$dir/.debug.log"
 }
-dbg "fired, input=$(printf '%s' "$INPUT" | head -c 400)"
+dbg "fired"
 
 URL=$(printf '%s'    "$INPUT" | jq -r '.tool_input.url    // empty' 2>/dev/null || true)
 PROMPT=$(printf '%s' "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)
