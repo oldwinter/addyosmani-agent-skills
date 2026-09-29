@@ -194,6 +194,17 @@ function resolveFixturePath(root, rel) {
   return resolvedPath;
 }
 
+function rejectFixtureSymlinks(source, displayPath) {
+  const stat = fs.lstatSync(source);
+  if (stat.isSymbolicLink()) {
+    throw new Error(`fixture path contains a symbolic link: ${displayPath}`);
+  }
+  if (!stat.isDirectory()) return;
+  for (const name of fs.readdirSync(source)) {
+    rejectFixtureSymlinks(path.join(source, name), path.join(displayPath, name));
+  }
+}
+
 // ---------- tier 2 ----------
 
 function runDeterministic(minRank1) {
@@ -314,6 +325,13 @@ function runDeterministic(minRank1) {
           if (!fs.existsSync(fixture)) {
             console.log(`  ✗  ${c.file}: eval id=${ev.id} fixture not found: evals/fixtures/${rel}`);
             errors++;
+          } else {
+            try {
+              rejectFixtureSymlinks(fixture, rel);
+            } catch (e) {
+              console.log(`  ✗  ${c.file}: eval id=${ev.id} has unsafe fixture "${rel}" — ${e.message}`);
+              errors++;
+            }
           }
         }
       }
@@ -461,6 +479,7 @@ function materializeWorkspace(ev) {
     if (!fs.existsSync(src)) {
       throw new Error(`fixture listed in files[] not found: evals/fixtures/${rel}`);
     }
+    rejectFixtureSymlinks(src, rel);
     const dest = resolveFixturePath(workspace, rel);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.cpSync(src, dest, { recursive: true });

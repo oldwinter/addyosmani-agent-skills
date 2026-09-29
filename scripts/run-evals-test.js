@@ -685,3 +685,23 @@ test('materializes a git baseline and applies a working-tree patch', () => {
     fs.rmSync(workspace, { recursive: true, force: true });
   }
 });
+
+test('rejects fixture symlinks that escape the fixture root', () => {
+  for (const rel of ['project/leak.txt', 'project/nested/leak.txt']) {
+    const root = makeSandbox();
+    const outside = path.join(root, 'outside-secret.txt');
+    fs.writeFileSync(outside, 'outside secret\n');
+    const link = path.join(root, 'evals', 'fixtures', rel);
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(outside, link);
+    const snippet = [
+      "const m=require('./scripts/run-evals.js');",
+      `m.materializeWorkspace({files:[${JSON.stringify(rel)}]});`,
+    ].join('');
+
+    const result = spawnSync(process.execPath, ['-e', snippet], { cwd: root, encoding: 'utf8' });
+
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stderr, /symbolic link/i);
+  }
+});
