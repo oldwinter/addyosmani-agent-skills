@@ -2,7 +2,7 @@
 
 ## 中文版安装（oldwinter fork）
 
-这是上游 `addyosmani/agent-skills` 的中文化 fork，当前同步到上游 `2686b620fc1fed2e8f60c704839c766b8594c6b6`。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
+这是上游 `addyosmani/agent-skills` 的中文化 fork，当前同步到上游 `1401c8b8030e023baeebb31781a6653fe8e93026`。安装后，runtime 会读取 `skills/*/SKILL.md` 中的中文执行导读和上游英文技术正文。
 
 ```bash
 npx skills add oldwinter/addyosmani-agent-skills --full-depth
@@ -219,7 +219,7 @@ Installed skills show up in the TUI slash menu, e.g. `/spec-driven-development`.
 <details>
 <summary><b>Other Agents</b></summary>
 
-Skills are plain Markdown - they work with any agent that accepts system prompts or instruction files. See [docs/getting-started.md](docs/getting-started.md).
+Skills are plain Markdown - they work with any agent that accepts system prompts or instruction files. See [docs/getting-started.md](docs/getting-started.md). Hosts that install the pack but aren't listed above are in [docs/other-hosts.md](docs/other-hosts.md).
 
 </details>
 
@@ -401,7 +401,7 @@ Wondering how this stacks up against [Superpowers](https://github.com/obra/super
 
 Skills should be **specific** (actionable steps, not vague advice), **verifiable** (clear exit criteria with evidence requirements), **battle-tested** (based on real workflows), and **minimal** (only what's needed to guide the agent).
 
-See [docs/skill-anatomy.md](docs/skill-anatomy.md) for the format specification and [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [docs/skill-anatomy.md](docs/skill-anatomy.md) for the format specification, [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, and [docs/advanced-per-agent-configuration.md](docs/advanced-per-agent-configuration.md) for applying model routing, tool restrictions, and other per-agent runtime controls without breaking the portable `SKILL.md` frontmatter.
 
 ---
 
